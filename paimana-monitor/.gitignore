@@ -1,0 +1,72 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+.venv/
+venv/
+env/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.so
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store
+
+# ML models
+backend/app/ml/models/*.pkl
+backend/app/ml/models/*.joblib
+backend/app/ml/models/*.json
+!backend/app/ml/models/.gitkeep
+
+# Data (keep structure, not raw data)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Storage
+backend/storage/*
+!backend/storage/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/

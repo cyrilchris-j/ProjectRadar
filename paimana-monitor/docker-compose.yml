@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL (local dev alternative to Supabase) ──────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: paimana_postgres
+    environment:
+      POSTGRES_DB: paimana
+      POSTGRES_USER: paimana_user
+      POSTGRES_PASSWORD: paimana_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql
+      - ./database/seeds/seed_dev.sql:/docker-entrypoint-initdb.d/002_seed_dev.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paimana_user -d paimana"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: paimana_backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://paimana_user:paimana_dev_password@postgres:5432/paimana
+      STORAGE_BACKEND: local
+      LOCAL_STORAGE_PATH: /app/storage
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ─── Frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: paimana_frontend
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  backend_storage:
