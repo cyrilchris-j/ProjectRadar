@@ -7,10 +7,10 @@
 
 -- Default admin user (password: Admin@1234 — change before any deployment)
 INSERT INTO users (id, email, full_name, password_hash, role, is_active) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'admin@paimana.gov.in',   'System Administrator', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGTrInfrastructure.hashpassword1', 'admin',   TRUE),
-  ('a0000000-0000-0000-0000-000000000002', 'analyst@paimana.gov.in', 'Data Analyst',          '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGTrInfra.hashpassword2',          'analyst', TRUE),
-  ('a0000000-0000-0000-0000-000000000003', 'officer@paimana.gov.in', 'Field Officer',          '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGTrInfra.hashpassword3',          'officer', TRUE),
-  ('a0000000-0000-0000-0000-000000000004', 'viewer@paimana.gov.in',  'Report Viewer',          '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGTrInfra.hashpassword4',          'viewer',  TRUE);
+  ('a0000000-0000-0000-0000-000000000001', 'admin@paimana.gov.in',   'System Administrator', '$2b$12$Iz6qzhUk1XdgkZ4y4K5ADuMP2bR7o4o0xFyhKQLJXfglUuSNA5moW', 'admin',   TRUE),
+  ('a0000000-0000-0000-0000-000000000002', 'analyst@paimana.gov.in', 'Data Analyst',          '$2b$12$Iz6qzhUk1XdgkZ4y4K5ADuMP2bR7o4o0xFyhKQLJXfglUuSNA5moW',          'analyst', TRUE),
+  ('a0000000-0000-0000-0000-000000000003', 'officer@paimana.gov.in', 'Field Officer',          '$2b$12$Iz6qzhUk1XdgkZ4y4K5ADuMP2bR7o4o0xFyhKQLJXfglUuSNA5moW',          'officer', TRUE),
+  ('a0000000-0000-0000-0000-000000000004', 'viewer@paimana.gov.in',  'Report Viewer',          '$2b$12$Iz6qzhUk1XdgkZ4y4K5ADuMP2bR7o4o0xFyhKQLJXfglUuSNA5moW',          'viewer',  TRUE);
 
 -- Organizations
 INSERT INTO organizations (id, name, code, organization_type) VALUES

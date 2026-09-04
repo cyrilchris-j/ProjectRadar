@@ -117,7 +117,7 @@ async def upload_file(
         action="upload",
         entity_type="document",
         entity_id=str(doc.id),
-        metadata={"filename": file.filename, "file_type": file_type.value, "report_month": str(report_month)},
+        metadata_={"filename": file.filename, "file_type": file_type.value, "report_month": str(report_month)},
     ))
 
     await db.commit()

@@ -53,7 +53,7 @@ async def create_user(
         action="create_user",
         entity_type="user",
         entity_id=str(user.id),
-        metadata={"email": body.email, "role": body.role.value},
+        metadata_={"email": body.email, "role": body.role.value},
     ))
     await db.flush()
     return UserOut.model_validate(user)
@@ -132,7 +132,7 @@ async def update_risk_config(
         action="update_risk_config",
         entity_type="risk_configuration",
         entity_id=str(config.id),
-        metadata=update_data,
+        metadata_=update_data,
     ))
     await db.flush()
     return RiskConfigOut.model_validate(config)

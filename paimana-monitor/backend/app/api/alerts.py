@@ -106,6 +106,6 @@ async def resolve_alert(
         action="resolve_alert",
         entity_type="alert",
         entity_id=str(alert_id),
-        metadata={"resolution_note": body.resolution_note},
+        metadata_={"resolution_note": body.resolution_note},
     ))
     return {"status": "resolved", "alert_id": str(alert_id)}

@@ -314,7 +314,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(Text, nullable=False)
     entity_type: Mapped[Optional[str]] = mapped_column(String(100))
     entity_id: Mapped[Optional[str]] = mapped_column(String(255))
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON)
+    metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSON)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45))
     user_agent: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
