@@ -22,16 +22,9 @@ from app.models.orm import (
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    role: UserRole
-    full_name: str
+class FirebaseVerifyRequest(BaseModel):
+    """Frontend sends the raw Firebase ID Token here after signing in."""
+    id_token: str
 
 
 class UserOut(BaseModel):
@@ -46,9 +39,9 @@ class UserOut(BaseModel):
 
 
 class UserCreate(BaseModel):
+    """Admin endpoint: create a user row. Password is set in Firebase Console."""
     email: EmailStr
     full_name: str
-    password: str = Field(min_length=8)
     role: UserRole = UserRole.viewer
 
 

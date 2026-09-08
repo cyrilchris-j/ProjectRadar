@@ -5,11 +5,10 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from passlib.context import CryptContext
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import get_current_user, hash_password, require_roles
+from app.api.auth import get_current_user, require_roles
 from app.database.connection import get_db
 from app.models.orm import AuditLog, RiskConfiguration, User, UserRole
 from app.schemas.schemas import (
@@ -44,7 +43,8 @@ async def create_user(
     user = User(
         email=body.email,
         full_name=body.full_name,
-        password_hash=hash_password(body.password),
+        # No password_hash — user will set their password via Firebase Console
+        # or a password-reset email. firebase_uid is populated on first login.
         role=body.role,
     )
     db.add(user)

@@ -1,35 +1,28 @@
 /**
  * Typed API client — all frontend HTTP calls go through here.
- * Never makes direct database calls from the frontend.
+ * Auth tokens are retrieved fresh from Firebase on every request
+ * (Firebase SDK handles auto-refresh internally).
  */
+import { auth } from "@/lib/firebase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// ─── Auth ──────────────────────────────────────────────────────────────────
+// ─── Token helper ──────────────────────────────────────────────────────────
 
-let _token: string | null = null;
-
-export function setToken(token: string | null) {
-  _token = token;
-  if (typeof window !== "undefined") {
-    if (token) localStorage.setItem("paimana_token", token);
-    else localStorage.removeItem("paimana_token");
-  }
+async function getFirebaseToken(): Promise<string | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  // forceRefresh=false → uses cached token unless within 5 min of expiry
+  return user.getIdToken(false);
 }
 
-export function getToken(): string | null {
-  if (_token) return _token;
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("paimana_token");
-  }
-  return null;
-}
+// ─── Core request helper ───────────────────────────────────────────────────
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
+  const token = await getFirebaseToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
@@ -42,7 +35,6 @@ async function request<T>(
   });
 
   if (res.status === 401) {
-    setToken(null);
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new Error("Unauthorized");
   }
@@ -58,13 +50,6 @@ async function request<T>(
 
 // ─── Auth endpoints ────────────────────────────────────────────────────────
 
-export interface TokenResponse {
-  access_token: string;
-  token_type: string;
-  role: string;
-  full_name: string;
-}
-
 export interface CurrentUser {
   id: string;
   email: string;
@@ -74,16 +59,19 @@ export interface CurrentUser {
   created_at: string;
 }
 
-export async function login(email: string, password: string): Promise<TokenResponse> {
-  const body = new URLSearchParams({ username: email, password });
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+/**
+ * Called after Firebase sign-in to upsert the user in PostgreSQL
+ * and retrieve their role/profile.
+ */
+export async function verifyToken(idToken: string): Promise<CurrentUser> {
+  const res = await fetch(`${API_BASE}/api/auth/verify`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: "Login failed" }));
-    throw new Error(error.detail || "Login failed");
+    const error = await res.json().catch(() => ({ detail: "Verification failed" }));
+    throw new Error(error.detail || "Verification failed");
   }
   return res.json();
 }
@@ -344,7 +332,7 @@ export async function uploadFile(
   formData.append("file", file);
   if (reportMonth) formData.append("report_month_str", reportMonth);
 
-  const token = getToken();
+  const token = await getFirebaseToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 

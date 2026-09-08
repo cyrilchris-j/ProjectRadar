@@ -1,71 +1,69 @@
 """
-Auth API — Login, logout, current user.
+Auth API — Firebase token verification, current-user lookup.
+
+Flow:
+  1. Frontend signs in via Firebase SDK → receives Firebase ID Token.
+  2. Frontend sends POST /api/auth/verify with the ID Token.
+  3. Backend verifies token with Firebase Admin SDK.
+  4. Backend upserts the user row (populates firebase_uid on first login).
+  5. All subsequent requests carry the Firebase ID Token as Bearer token.
+     get_current_user() verifies it and returns the User ORM object.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.settings import get_settings
+from app.config.firebase_admin import verify_firebase_token
 from app.database.connection import get_db
-from app.models.orm import AuditLog, User
-from app.schemas.schemas import LoginRequest, TokenResponse, UserOut
+from app.models.orm import AuditLog, User, UserRole
+from app.schemas.schemas import FirebaseVerifyRequest, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-settings = get_settings()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
-
-
-def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
-
-
-def create_access_token(data: dict) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode(
-        {**data, "exp": expire},
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-    )
-
+# ─── Dependency: resolve current user from Firebase Bearer token ──────────────
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    authorization: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    credentials_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        user_id: str = payload.get("sub")
-        if not user_id:
-            raise credentials_exc
-    except JWTError:
-        raise credentials_exc
+    """
+    Extract the Firebase ID Token from the Authorization header,
+    verify it, and return the matching User ORM object.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or malformed Authorization header.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    id_token = authorization.removeprefix("Bearer ").strip()
+    decoded = verify_firebase_token(id_token)
+    firebase_uid: str = decoded["uid"]
+
+    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     user = result.scalar_one_or_none()
-    if not user or not user.is_active:
-        raise credentials_exc
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account not found. Contact an administrator.",
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled.",
+        )
+
     return user
 
 
 def require_roles(*roles):
-    """Dependency factory — raises 403 if user's role not in allowed list."""
+    """Dependency factory — raises 403 if user's role is not in allowed list."""
     async def _check(current_user: User = Depends(get_current_user)):
         if current_user.role not in roles:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
@@ -73,27 +71,48 @@ def require_roles(*roles):
     return _check
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+# ─── POST /api/auth/verify ────────────────────────────────────────────────────
+
+@router.post("/verify", response_model=UserOut)
+async def verify_and_upsert(
+    body: FirebaseVerifyRequest,
     db: AsyncSession = Depends(get_db),
     request: Request = None,
 ):
-    result = await db.execute(select(User).where(User.email == form_data.username))
+    """
+    Called by the frontend immediately after Firebase sign-in.
+    Verifies the Firebase ID token, then:
+      - If a matching user (by firebase_uid OR email) exists → update firebase_uid.
+      - Otherwise → creates a new user row with role=viewer.
+    Returns the full user profile.
+    """
+    decoded = verify_firebase_token(body.id_token)
+    firebase_uid: str = decoded["uid"]
+    email: str = decoded.get("email", "")
+    display_name: str = decoded.get("name", email.split("@")[0])
+
+    # Try lookup by firebase_uid first, then fall back to email
+    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+    if not user and email:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+    if user:
+        # Link firebase_uid if not already set (handles first login after migration)
+        if user.firebase_uid != firebase_uid:
+            user.firebase_uid = firebase_uid
+        user.last_login_at = datetime.utcnow()
+    else:
+        # Brand-new user — default role is viewer; an admin can promote later
+        user = User(
+            email=email,
+            full_name=display_name,
+            firebase_uid=firebase_uid,
+            role=UserRole.viewer,
         )
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is disabled")
-
-    token = create_access_token({"sub": str(user.id), "role": user.role.value})
-
-    # Update last login
-    user.last_login_at = datetime.utcnow()
+        db.add(user)
 
     # Audit log
     db.add(AuditLog(
@@ -104,13 +123,13 @@ async def login(
         ip_address=request.client.host if request else None,
     ))
 
-    return TokenResponse(
-        access_token=token,
-        role=user.role,
-        full_name=user.full_name,
-    )
+    await db.flush()
+    return UserOut.model_validate(user)
 
+
+# ─── GET /api/auth/me ─────────────────────────────────────────────────────────
 
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
+    """Return the currently authenticated user's profile."""
     return current_user

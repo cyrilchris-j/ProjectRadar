@@ -28,10 +28,10 @@ class Settings(BaseSettings):
     # ── Database ─────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://paimana_user:paimana_dev_password@localhost:5432/paimana"
 
-    # ── Auth ─────────────────────────────────────────────────────────────────
-    JWT_SECRET_KEY: str = "change-this-secret"
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    # ── Auth (Firebase) ──────────────────────────────────────────────────────
+    # Path to Firebase service-account JSON (download from Firebase Console →
+    # Project Settings → Service Accounts → Generate new private key)
+    FIREBASE_SERVICE_ACCOUNT_PATH: str = "./firebase-service-account.json"
 
     # ── Storage ──────────────────────────────────────────────────────────────
     STORAGE_BACKEND: str = "local"   # local | supabase
