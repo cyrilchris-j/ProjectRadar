@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "installCommand": "cd paimana-monitor/frontend && npm ci",
+  "buildCommand": "cd paimana-monitor/frontend && npm run build",
+  "outputDirectory": "paimana-monitor/frontend/.next",
+  "devCommand": "cd paimana-monitor/frontend && npm run dev"
+}
