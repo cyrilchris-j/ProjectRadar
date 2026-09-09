@@ -27,7 +27,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: paimana_backend
-    env_file: .env
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql://paimana_user:paimana_dev_password@postgres:5432/paimana
       STORAGE_BACKEND: local
