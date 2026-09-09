@@ -29,9 +29,14 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://paimana_user:paimana_dev_password@localhost:5432/paimana"
 
     # ── Auth (Firebase) ──────────────────────────────────────────────────────
+    ALLOWED_FIREBASE_UIDS: str = "k4zXG5UeG1hjuQNUBTO68nexYIb2"
     # Path to Firebase service-account JSON (download from Firebase Console →
     # Project Settings → Service Accounts → Generate new private key)
     FIREBASE_SERVICE_ACCOUNT_PATH: str = "./firebase-service-account.json"
+
+    @property
+    def allowed_firebase_uids(self) -> set[str]:
+        return {uid.strip() for uid in self.ALLOWED_FIREBASE_UIDS.split(",") if uid.strip()}
 
     # ── Storage ──────────────────────────────────────────────────────────────
     STORAGE_BACKEND: str = "local"   # local | supabase

@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.firebase_admin import verify_firebase_token
+from app.config.settings import get_settings
 from app.database.connection import get_db
 from app.models.orm import AuditLog, User, UserRole
 from app.schemas.schemas import FirebaseVerifyRequest, UserOut
@@ -44,6 +45,11 @@ async def get_current_user(
     id_token = authorization.removeprefix("Bearer ").strip()
     decoded = verify_firebase_token(id_token)
     firebase_uid: str = decoded["uid"]
+    if firebase_uid not in get_settings().allowed_firebase_uids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This Firebase account is not authorized to access the platform.",
+        )
 
     result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     user = result.scalar_one_or_none()
@@ -88,6 +94,11 @@ async def verify_and_upsert(
     """
     decoded = verify_firebase_token(body.id_token)
     firebase_uid: str = decoded["uid"]
+    if firebase_uid not in get_settings().allowed_firebase_uids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This Firebase account is not authorized to access the platform.",
+        )
     email: str = decoded.get("email", "")
     display_name: str = decoded.get("name", email.split("@")[0])
 
