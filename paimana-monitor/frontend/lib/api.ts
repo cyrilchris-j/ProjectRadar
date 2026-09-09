@@ -5,7 +5,21 @@
  */
 import { auth } from "@/lib/firebase";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const configuredApiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+const API_BASE = configuredApiBase || (
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:8000"
+    : ""
+);
+
+function apiUrl(path: string): string {
+  if (!API_BASE) {
+    throw new Error(
+      "Backend API is not configured. Set NEXT_PUBLIC_API_URL in the deployment environment."
+    );
+  }
+  return `${API_BASE}${path}`;
+}
 
 // ─── Token helper ──────────────────────────────────────────────────────────
 
@@ -29,7 +43,7 @@ async function request<T>(
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(apiUrl(path), {
     ...options,
     headers,
   });
@@ -64,7 +78,7 @@ export interface CurrentUser {
  * and retrieve their role/profile.
  */
 export async function verifyToken(idToken: string): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/api/auth/verify`, {
+  const res = await fetch(apiUrl("/api/auth/verify"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id_token: idToken }),
@@ -336,7 +350,7 @@ export async function uploadFile(
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/api/imports`, {
+  const res = await fetch(apiUrl("/api/imports"), {
     method: "POST",
     headers,
     body: formData,
