@@ -61,6 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Step 2: Get ID token and call backend /verify (upserts user row, returns profile)
     const idToken = await credential.user.getIdToken();
     const profile = await verifyToken(idToken);
+    if (profile.role !== "admin") {
+      await firebaseSignOut(auth);
+      throw new Error("Only administrator accounts can access this platform.");
+    }
     setUser(profile);
     setFirebaseUser(credential.user);
   };

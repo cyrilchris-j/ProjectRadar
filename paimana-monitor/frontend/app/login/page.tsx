@@ -120,10 +120,6 @@ export default function LoginPage() {
                 <span>Admin</span>
                 <span className="font-mono text-slate-500">admin@paimana.gov.in / Admin@1234</span>
               </div>
-              <div className="flex justify-between">
-                <span>Analyst</span>
-                <span className="font-mono text-slate-500">analyst@paimana.gov.in / Admin@1234</span>
-              </div>
             </div>
           </div>
         </div>

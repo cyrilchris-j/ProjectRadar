@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && (!user || user.role !== "admin")) {
       router.push("/login");
     }
   }, [user, isLoading, router]);
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!user) return null;
+  if (!user || user.role !== "admin") return null;
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden">
